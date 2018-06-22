@@ -1,0 +1,38 @@
+Package: faanica
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Authors@R: c(
+  person("Brouwer", "Nathan", ,email = "brouwern@gmail.com",
+    role = c("aut", "cre")
+    ),
+  person("Emily","Scott", , "emily.a.scott12@gmail.com",
+  role = c("aut"))
+  )
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: The goal of faanica is to replicate and extend the results from 
+  papers published by John Faaborg et al on their long-term monitoring project 
+  at Guanica Forest, Puerto Rico.  In various publications Faaborg et al have 
+  released summary tables of total captures by species.  faanica is a repository
+  for those data tables as well as worked examples in the vignettes of regression analysis similar
+  to those in the original papers.  There are also vignettes extending the analyses
+  to use, e.g., mixed models, autocorrelation, and community analyses.
+License: CC 3.0.
+URL: https://github.com/brouwern/faanica
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
+Imports: 
+    ggplot2,
+    ggpubr,
+    Hmisc,
+    doBy,
+    ggfortify,
+    gridExtra,
+    dplyr,
+    bbmle,
+    here
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

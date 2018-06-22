@@ -1,0 +1,227 @@
+---
+title: "01-Cleaning Faaborg et al Guanica Forest migrant data"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Introduction
+
+Data originally from Table 2 in Faaborg et al 2013.
+
+Tables in "wide" format and need to be cleaned and reshaped to "long" format for analysis in R
+
+### References
+Faaborg J, WJ Arendt, JD Toms, KM Dugger, WA Cox, and  M Canals Mora.  2013. Long-term decline of a winter-resident bird community in Puerto Rico.  Biodiversity & Conservation.  https://link.springer.com/article/10.1007/s10531-012-0399-7
+Table 2: "Number of winter residents captured annually from 1973–2012"
+
+
+Long‐term variation in the winter resident bird community of Guánica Forest, Puerto Rico: lessons for measuring and monitoring species richness
+J Faaborg, KM Dugger, WJ Arendt. - Journal of Field Ornithology, 2007.   http://www.jstor.org/stable/40345963
+Table 1: data from 1989 through 2006.
+
+Understanding survival and abundance of overwintering warblers: does rainfall matter?
+KM Dugger, J Faaborg, WJ Arendt, KA Hobson - The Condor, 2004 
+http://www.bioone.org/doi/abs/10.1650/7632 ; available on JSTOR
+Summarizes environmental variables in Table 1
+
+
+### Steps
+
+* Load .csv with wide data (Table 2, Faabor et al 2013)
+* Clean data (eg, convert species names to AOU codes)
+* Reshape data to long format using reshape2::melt
+
+### Analysis History / Original file names:
+
+* Original analysis carried out by NLB/EC in 2017
+* Turned into research compendium in 6/2017
+* Original file scripts began with was "FaaborgData_edit_CSV.csv"
+  - flagged as "edit" because... ?
+  - file chanaged to "faaborg_2013.csv"
+  
+  
+## Libraries
+
+```{r}
+library(reshape2)
+library(here)
+```
+
+
+## Load Faaborg et al 2013 data
+
+Note that the location of these data depends on whether
+
+* You downloaded the data and saved it to your working directory
+  - Set your working directory or the file path accordinly
+* You loaded faanica into R as a package
+  - the file path should be "./extdata/faaborg2013.csv"
+* You forked or cloned the faanica github repro (or are the maintainer) and are therefore working from the faanica sources code
+  -  ".inst/extdata/faaborg2013.csv"
+
+I am working directly from the faanica source code and will load from "".inst/extdata/faaborg2013.csv""
+
+Use here() function in here package to assure that file name always gets properly constructed (can be a problem in some contexts)
+```{r}
+file. <- here::here("inst/extdata/faaborg2013_table2.csv")
+```
+
+Load the data; note that there is a 9-row header of meta data that needs to be skipped
+```{r}
+faa.wide <- read.csv(file., comment.char = "#", skip = 9)
+```
+
+## Clean data
+
+Set up 4 letter AOU species codes from common names.
+
+### Create spp names
+```{r}
+#extract 1st 2 letters of each part of name
+faa.wide$spp.code <- gsub("^([A-Za-z]{2})(.*)([ ])([A-Za-z]{2})(.*)","\\1\\4", faa.wide$common.name)
+
+## Change spp.code to upper case
+faa.wide$spp.code <- toupper(faa.wide$spp.code)
+
+## Correct species names that don't follow pattern from above
+
+## Merlin
+faa.wide$spp.code[which(faa.wide$spp.code == "MERLIN")] <- "MERL"
+
+## Ovenbird
+faa.wide$spp.code[which(faa.wide$spp.code == "OVENBIRD")] <- "OVEN"
+
+## Worm-eating warbler
+faa.wide$spp.code[which(faa.wide$spp.code == "WOWA")] <- "WEWA"
+
+## Distinguish blue-winged warbler (BWWA), black-and-white warbler (BAWW), and black-throated blue warbler (BTBW)
+faa.wide[which(faa.wide$spp.code == "BLWA"), c("spp.code","common.name")] 
+faa.wide$spp.code[which(faa.wide$spp.code == "BLWA")] <- c("BWWA" ,"BAWW","BTBW")
+
+## Distinguish prairie warbler (PRWA) and prothonotary warbler (PROW)
+faa.wide[which(faa.wide$spp.code == "PRWA"),c("spp.code","spp")] 
+faa.wide$spp.code[which(faa.wide$spp.code == "PRWA")][[1]] <- "PROW"
+
+## Cape May warbler (CMWA)
+faa.wide$spp.code[which(faa.wide$spp.code == "CAWA")] <- "CMWA"
+
+## Rose-breasted grosbeak (RBGR)
+faa.wide$spp.code[which(faa.wide$spp.code == "ROGR")] <- "RBGR"
+```
+
+### Validate species codes
+
+Look at summary of species codes to make sure there is only one instance of each
+```{r}
+with(faa.wide, 
+     table(spp.code))
+```
+
+Use head() and tail() to look at first and last rows of dataframe, Confirm nothing has been added or deleted, Make sure everything looks as expected.
+```{r}
+head(faa.wide)
+tail(faa.wide)
+```
+
+## Convert from wide- to long-format & clean 
+
+
+### Melt data
+* ID variables uniquely identify each row of data
+  - common.name, spp, spp.code
+* specify that you want "year" and "N" that correspond to each (common.name, spp, spp.code)
+
+```{r}
+dat.melt <- reshape2::melt(data = faa.wide,
+     id.vars = c("common.name",
+                 "spp",
+                 "spp.code"),
+     variable.name = "year",
+     value.name = "N")
+```
+
+
+### Clean melted data
+
+* Remove "yr." from in front of the year
+* Tell R that "year" is numeric
+```{r}
+dat.melt$year <- gsub("yr.", "", dat.melt$year)
+dat.melt$year <- as.numeric(dat.melt$year)
+```
+
+
+## Append data on number of nets per year
+
+* The following code shows how to solve this problem using loops
+* the merge() function can also do this
+
+### Add number of nets used each year 
+
+* ... prior to 1989?
+* 7 in 1989
+* 8 in 1990
+* 9 in all subsequent years
+```{r}
+n.rows <- nrow(dat.melt)
+dat.melt$nets <- rep(9,n.rows)
+
+for (i in 1:480)
+{
+    if ((dat.melt$year[i] == 1989))
+    {
+      dat.melt$nets[i] <- 7
+    }
+}
+
+for (i in 1:480)
+{
+    if ((dat.melt$year[i] == 1990)) 
+    {
+      dat.melt$nets[i] <- 8
+    }
+}
+```
+
+
+
+## Calculate caps per net
+
+Mist ned dat is frequently expressed as capture per net hour.
+
+```{r}
+dat.melt$caps.per.net <- with(dat.melt, N/nets)
+```
+
+
+## Save long data
+
+```{r}
+file. <- here::here("inst/extdata/faaborg2013.csv")
+write.csv(dat.melt,
+          file = file.,
+          row.names = F)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+#save data as R object to /dat
+migrants <- dat.melt
+use_data(migrants)
+```
+
